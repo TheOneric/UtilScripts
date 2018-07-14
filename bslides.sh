@@ -10,7 +10,7 @@ isNumber () {
 # Checks if $1 is a number
 # @return 1 if $1 is a valid number, 0 otherwise
 
-	if [[ $1 =~ ^([0-9](\.)?)+$ ]] ; then
+	if [[ $1 =~ ^([0-9])+((\.)[0-9]+)?$ ]] ; then
 		return 1
 	else
 		return 0
@@ -27,6 +27,17 @@ printUsage () {
 	echo "   If --time is omitted 1650.0 is used as the default value"
 	echo "   If --transition is omitted 5.0 is used as the default value"
 	echo "   If --output is omitted, xml will be written to './backgrounds.xml'"
+}
+
+getAbsPath () {
+# Print absolute path to $1 ($1 can either be file or directory)
+	#local dn=$(dirname $1)
+	#local fn=$(basename $1)
+	#local adn=$(cd $dn; pwd)
+	#eval "$1=$adn/$fn"
+	#eval '$1=$(realpath -m --no-symlinks "$1")'
+	#return "$r"
+	echo -n "$(realpath -m --no-symlinks "$1")"
 }
 
 ###################  BEGIN SCRIPT  ###################
@@ -90,7 +101,7 @@ while [ "$1" != '' ] ; do
 			printUsage
 		fi
 	else
-		images[fcount]="$1" && ((fcount++))
+		images[fcount]="$(getAbsPath "$1")" && ((fcount++))
 	fi
 	shift
 done
@@ -121,6 +132,5 @@ for ((j=0;j<fcount;j++))
 	echo "$s" >> "$OUTP" 
  done
 echo "$FOOTER" >> "$OUTP"
-
 
 
