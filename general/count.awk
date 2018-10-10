@@ -1,7 +1,7 @@
 #!/usr/bin/awk -f
 
 BEGIN {	#time="(([01][0-9])|(2[0-3]))(:[0-5][0-9])";
-		timespan=/(([01][0-9])|(2[0-3]))(:[0-5][0-9])-(([01][0-9])|(2[0-3]))(:[0-5][0-9])/;
+		#timespan=/(([01][0-9])|(2[0-3]))(\:[0-5][0-9])\-(([01][0-9])|(2[0-3]))(\:[0-5][0-9])/;
 		h=0; m=0;}
 
 # Comments
@@ -10,8 +10,10 @@ NF==0 {next;}
 
 /^[0-9]{2}\.[0-9]{2}\.[0-9]{5}[[:space:]]+.*/ {
 	for (i=2; i<=NF; i++) {
-		if (match($i, "\\(.*\\)")) {  #inline comment
-		} else if (match($i, timespan)) { #actual timespan
+#		if (NR == 9) { 	printf "Match '%s': %d (true: %d)\n\n",$i,($i ~ timespan),TRUE;}
+		if (match($i, /\(.*\)/)) {  #inline comment
+#		} else if (match($i, timespan)) { #actual timespan
+		} else if ($i ~ /([01][0-9]|2[0-3]):[0-5][0-9]\-([01][0-9]|2[0-3]):[0-5][0-9]/) { #actual timespan
 			split($i, T, "-");
 			split(T[1], t1, ":");
 			split(T[2], t2, ":");
