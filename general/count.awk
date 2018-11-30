@@ -31,7 +31,7 @@ NF==0 {next;}
         next;
 }
 
-# Unmatched valid lines
+# Unmatched "valid" lines
 match($1, /^[0-9]{2}\.[0-9]{2}\.[0-9]{5}[[:space:]]*$/) {next}
 
 1 {printf "\n[WARNING]: Line of unknown format:\n\t'%s'\n",$0}
