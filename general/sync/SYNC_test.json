@@ -1,0 +1,30 @@
+[
+	{
+	"NAME": "Test A",
+	"mode": "NTFS",
+	"files": [
+		{
+		"source": "./testSync/S/A1",
+		"destination": "./testSync/D"
+		},
+		{
+		"source": "./testSync/S/A2",
+		"destination": "./testSync/D"
+		}
+	]
+	}, 
+	{
+	"NAME": "Test B",
+	"mode": "EXT4",
+	"files": [
+		{
+		"source": "./testSync/S/B",
+		"destination": "./testSync/D",
+		"filterRules": [
+			"+ B/keep", "-rs B/*"
+			
+		]
+		}
+	]
+	}
+]

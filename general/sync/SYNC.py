@@ -3,7 +3,8 @@
 # This script is intended for use on UNIX-Systems and relies on the 'rsync' utility
 
 import json
-import os, sys
+import os, sys, subprocess
+import datetime
 
 '''
 0:  No logging
@@ -48,37 +49,72 @@ def logByIndicator(baseMsg, errorFlag):
 
 
 
-def syncPlaces(source, destination, ignore = None, mode = "EXT4"):
+def syncPlaces(source, destination, filterRules = None, mode = "EXT4"):
+    retCode = 0
     modes = {"EXT4": "-urltEXgop", "NTFS": "-urltEX --no-perms --no-owner --no-group"}
-    if(ignore is not None):
-        exPath = "/tmp/oneric_sync_" + str(os.getppid()) + "_ex"
-        inPath = "/tmp/oneric_sync_" + str(os.getppid()) + "_in"
-        excludeFile = open(exPath, "w")
-        includeFile = open(inPath, "w")
-        for line in ignore:
-            if(line.startswith('-')):
-				excludeFile.write(line[1:] + "\n")
-			elif(line.startswith('+')):
-				includeFile.write(line[1:] + "\n")
-			else:
-				log_InvalidJSON(line, "Ignore patterns must begin with + To include and with - to exclude")
-				#### TODO change JSON to seperate in and exclude to avoid issues wit h file/dirnames starting with +-
-				### Report error appropieatly
-        excludeFile.close()
-        includeFile.close()
+    logPath = "/tmp/oneric_sync_"+str(os.getppid())+"_rsyncLog"
+    if(filterRules is not None):
+        filterPath = "/tmp/oneric_sync_" + str(os.getppid()) + "_filters"
+        filterFile = open(filterPath, "w")
+        for line in filterRules:
+            filterFile.write(line + "\n")
+        #for line in ignore:
+        #    if(line.startswith('-')):
+        #        excludeFile.write(line[1:] + "\n")
+        #    elif(line.startswith('+')):
+        #        includeFile.write(line[1:] + "\n")
+        #    else:
+        #        log_InvalidJSON(line, "Ignore patterns must begin with + To include and with - to exclude")
+        #        #### TO DO change JSON to seperate in and exclude to avoid issues wit h file/dirnames starting with +-
+        #        ### Report error appropieatly
+        filterFile.close()
     else:
-        igPath = None
-
-    print("NOT YET IMPLEMENTED");
-    '''
-        	rsync -urltEX --no-perms --no-owner --no-group --exclude-from="$exPath" --include-from="$exPath" "$SOURCE_ROOT$i" "$(dirname "$DESTIN_ROOT$i")" >> "$LOGFILE" 2>&1
-    '''
+        filterPath = None
+    #if(include is not None):
+    #    inPath = "/tmp/oneric_sync_" + str(os.getppid()) + "_in"
+    #    includeFile = open(inPath, "w")
+    #    includeFile.close()
+    #else:
+    #    inPath = None
     
-    if(inPath is not None):
-        os.remove(igPath)
-	if(exPath is not None):
-        os.remove(exPath)
+    logFile = open(logPath, "a")
+    startTime = str(datetime.datetime.now())
+    logFile.write("New rsync-Instance at work\n\t")
+    logFile.write("Time: "+startTime+"\n")
+    logFile.flush()
+    command = "rsync " + modes[mode]
+    command += (" --filter='merge "+filterPath+"' ") if filterPath is not None else " "
+    command += '"'+source+'" '
+    #command += '"$(dirname "'+destination+'")" '
+    command += '"'+destination+'" '
+    #command += '2>&1 | tee -a "'+logPath+'"'
+    #Now for logging the output including stderr and print it, while keeping exit status
+    command += '> >(tee -a "'+logPath+'") 2> >(tee -a "'+logPath+'" >&2)'
+    rsync_res = None
+    try:
+        rsync_res = subprocess.run(command, shell=True, check=True, executable='/bin/bash')
+    except subprocess.CalledProcessError as e:
+        log_error("Rsync failed, instance started at "+startTime+" check logfile !")
+        retCode = 2
+    except OSError as e:
+        log_error("rsync not installed !")
+        sys.exit(10);
+        
+        
+    logFile.write("Rsync finished\n\n")
+    if(rsync_res is not None and rsync_res.returncode != 0):
+        log_error("Rsync-Error occured in instance started at "+startTime+", please check output, or logfile '"+logPath+"' !")
+        retCode = 2
+    
+    #print("NOT YET IMPLEMENTED");
+    #'''
+    #        rsync -urltEX --no-perms --no-owner --no-group --exclude-from="$exPath" --include-from="$exPath" "$SOURCE_ROOT$i" "$(dirname "$DESTIN_ROOT$i")" >> "$LOGFILE" 2>&1
+    #'''
+    
+    if(filterPath is not None):
+        os.remove(filterPath)
         #printDebug("lol")
+    return retCode
         
 
 def getOptionalList(entry, fieldName):
@@ -103,25 +139,20 @@ def processFileInput(files):
                 if "files" not in file_set: 
                     log_InvalidJSON(file_set)
                     continue
-                log_info("Start syncing" + file_set.get("NAME", "[Unnamed]"));
+                log_info("Start syncing " + file_set.get("NAME", "[Unnamed]"));
                 mode = file_set.get("mode", "EXT4")
                 errorFlag_set = 0;
                 for entry in file_set["files"]:    
                     if ("source" not in entry) or ("destination" not in entry):
                         log_InvalidJSON(entry);
                         continue
-                    ignore = entry.get("ignore", None)
-                    if(not (ignore is None)):
-                        if(not isinstance(ignore, list)):
-                            log_InvalidJSON(entry, "Field 'ignore' must be a string list !")
-                            continue
-                        if (len(ignore) == 0):
-                            ignore = None
-                        elif (not isinstance(ignore[0], str)):
-                            log_InvalidJSON(entry, "Field 'ignore' must be a string list !")
-                            continue    
+                    filtRules = getOptionalList(entry, "filterRules")
+                    if(filtRules == float('Inf')):
+                        continue;
                     
-                    syncPlaces(entry["source"], entry["destination"], ignore, mode);
+                    rc = syncPlaces(entry["source"], entry["destination"], filtRules, mode);
+                    if(rc > errorFlag_set):
+                        errorFlag_set = rc
                     
                 logByIndicator("Finished "+file_set.get("NAME", "[Unnamed]"), errorFlag_set)
                 if(errorFlag_set > errorFlag_file):
