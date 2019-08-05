@@ -31,13 +31,18 @@ printUsage () {
 
 getAbsPath () {
 # Print absolute path to $1 ($1 can either be file or directory)
-	#local dn=$(dirname $1)
-	#local fn=$(basename $1)
-	#local adn=$(cd $dn; pwd)
-	#eval "$1=$adn/$fn"
-	#eval '$1=$(realpath -m --no-symlinks "$1")'
-	#return "$r"
-	echo -n "$(realpath -m --no-symlinks "$1")"
+	command -v realpath
+	if [ "$?" -eq 0  ] ; then
+		echo -n "$(realpath -m --no-symlinks "$1")"
+	else
+		if [ "$1" == "." ]; then
+			echo -n "$(pwd)"
+		elif [ "$1" == ".." ]; then
+			echo -n "$(dirname "$(pwd)")"
+		else
+			echo -n "$(cd "$(dirname "$1")"; pwd)/$(basename "$1")"
+		fi
+	fi
 }
 
 ###################  BEGIN SCRIPT  ###################
