@@ -21,7 +21,7 @@
 		"source": "./testSync/S/B",
 		"destination": "./testSync/D",
 		"filterRules": [
-			"+ B/keep", "-rs B/*"
+			"+ B/keep", "+ B/keep/file_2", "-rs B/keep/*", "-rs B/*"
 			
 		]
 		}

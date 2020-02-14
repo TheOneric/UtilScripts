@@ -56,8 +56,11 @@ def syncPlaces(source, destination, filterRules = None, mode = "EXT4"):
     if(filterRules is not None):
         filterPath = "/tmp/oneric_sync_" + str(os.getppid()) + "_filters"
         filterFile = open(filterPath, "w")
+        included = set()
         for line in filterRules:
             filterFile.write(line + "\n")
+            #if(line.startswith('+') or linestartswith('include')):
+            #    TODO
         #for line in ignore:
         #    if(line.startswith('-')):
         #        excludeFile.write(line[1:] + "\n")
@@ -83,6 +86,8 @@ def syncPlaces(source, destination, filterRules = None, mode = "EXT4"):
     logFile.write("Time: "+startTime+"\n")
     logFile.flush()
     command = "rsync " + modes[mode]
+    if (VERBOSE):
+        command += " -v"
     command += (" --filter='merge "+filterPath+"' ") if filterPath is not None else " "
     command += '"'+source+'" '
     #command += '"$(dirname "'+destination+'")" '
@@ -100,12 +105,15 @@ def syncPlaces(source, destination, filterRules = None, mode = "EXT4"):
         log_error("rsync not installed !")
         sys.exit(10);
         
-        
-    logFile.write("Rsync finished\n\n")
+    logFile.write("Rsync finished:\n")        
     if(rsync_res is not None and rsync_res.returncode != 0):
-        log_error("Rsync-Error occured in instance started at "+startTime+", please check output, or logfile '"+logPath+"' !")
+        log_error("  Rsync-Error occured in instance started at "+startTime+", please check output, or logfile '"+logPath+"' !\n")
         retCode = 2
-    
+    if(rsync_res is not None):
+        logFile.write("  Rsync exit code: "+str(rsync_res.returncode)+"\n")
+    logFile.write("\n")
+    logFile.close()
+
     #print("NOT YET IMPLEMENTED");
     #'''
     #        rsync -urltEX --no-perms --no-owner --no-group --exclude-from="$exPath" --include-from="$exPath" "$SOURCE_ROOT$i" "$(dirname "$DESTIN_ROOT$i")" >> "$LOGFILE" 2>&1
@@ -113,9 +121,9 @@ def syncPlaces(source, destination, filterRules = None, mode = "EXT4"):
     
     if(filterPath is not None):
         os.remove(filterPath)
-        #printDebug("lol")
+        printDebug("lol")
     return retCode
-        
+    
 
 def getOptionalList(entry, fieldName):
     ignore = entry.get(fieldName, None)
